@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex 4G - القفل التلقائي</title>
+    <style>
+        :root { --red: #e60000; --dark: #0f172a; }
+        body { background: var(--dark); font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; border-top: 8px solid var(--red); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: var(--red); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        #status { display: none; }
+        .progress-container { background: #eee; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { background: var(--red); height: 100%; width: 0%; transition: 1s linear; }
+        .lock-screen { color: white; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div id="main-container" class="card">
+        <h2 style="color:var(--red)">VORTEX 4G</h2>
+        
+        <div id="login-form">
+            <input type="text" id="u" placeholder="اسم المستخدم">
+            <input type="password" id="p" placeholder="كلمة المرور">
+            <select id="s">
+                <option value="0.04">سرعة 512K (توفير)</option>
+                <option value="0.22">سرعة 1G (فائقة)</option>
+            </select>
+            <button onclick="start()">تفعيل باقة 400MB</button>
+        </div>
+
+        <div id="status">
+            <p>المستخدم: <b id="user-display"></b></p>
+            <div style="display:flex; justify-content:space-between; font-size:14px;">
+                <span>المتبقي: <span id="rem">400.00</span> MB</span>
+                <span>المستهلك: <span id="usd">0.00</span> MB</span>
+            </div>
+            <div class="progress-container"><div id="bar" class="progress-bar"></div></div>
+            <p style="font-size:11px; color:gray;">سيتم قفل الخدمة تلقائياً عند انتهاء الرصيد</p>
+        </div>
+    </div>
+
+    <script>
+        // جلب البيانات والحالة من الذاكرة لضمان عدم التصفير
+        let used = parseFloat(localStorage.getItem('v_used')) || 0;
+        let isLocked = localStorage.getItem('v_locked') === 'true';
+        let savedU = localStorage.getItem('v_u');
+        let savedS = parseFloat(localStorage.getItem('v_s'));
+
+        // وظيفة القفل التلقائي الفوري
+        function applyHardLock() {
+            document.getElementById('main-container').innerHTML = `
+                <h1 style="color:#e60000; font-size:40px;">🛑</h1>
+                <h2 style="color:#e60000;">تم قفل النت!</h2>
+                <p>عذراً <b>${savedU}</b>، لقد استهلكت 400MB.</p>
+                <p style="font-size:13px; color:#666;">يرجى مراجعة المسؤول لتجديد الاشتراك.</p>
+                <button onclick="location.reload()" style="margin-top:10px; background:#0f172a;">تحديث الحالة</button>`;
+            localStorage.setItem('v_locked', 'true');
+        }
+
+        // بدء الجلسة وتخزين البيانات
+        function start() {
+            const user = document.getElementById('u').value;
+            const pass = document.getElementById('p').value;
+            const speed = document.getElementById('s').value;
+            if(!user || !pass) return alert("يرجى إدخال اسم المستخدم وكلمة المرور");
+            
+            localStorage.setItem('v_u', user);
+            localStorage.setItem('v_s', speed);
+            localStorage.setItem('v_locked', 'false');
+            location.reload();
+        }
+
+        // فحص الحالة عند التحميل
+        if (isLocked || used >= 400) {
+            applyHardLock();
+        } else if (savedU) {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('status').style.display = 'block';
+            document.getElementById('user-display').innerText = savedU;
+            
+            const mainInterval = setInterval(() => {
+                used += savedS;
+                localStorage.setItem('v_used', used);
+                
+                // تحديث الشاشة
+                document.getElementById('usd').innerText = used.toFixed(2);
+                document.getElementById('rem').innerText = (400 - used).toFixed(2);
+                document.getElementById('bar').style.width = (used/400*100) + "%";
+
+                // القفل التلقائي
+                if (used >= 400) {
+                    clearInterval(mainInterval);
+                    applyHardLock();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
